@@ -33,15 +33,12 @@ def addHeadersConditional(excelSheet, list, headerType: int = 3):
 #Adds data from excel sheet to sharepoint list, does NOT UPDATE the data
 def addDataToList(list, excelSheet, threaded: bool = False, sortThreads: int = 1):
     data = sortToList(excelDoc=excelSheet, threads=sortThreads)
-    fData = listSplitter(data, maxLength=100)
+    fData = listSplitter(data, maxLength=500)
     if(threaded):
-        thread_list = []
+        pool = ThreadPool(processes=len(fData))
         for d in fData:
-            thread = Thread(target=uploadNewData, args=(d,list))
-            thread_list.append(thread)
-            thread.start()
-        for t in thread_list:
-            t.join()   
+            pool.apply(uploadNewData,args=(d,list))
+        pool.close()
     else:
         for d in fData:
             uploadNewData(list=list, data=d)
@@ -59,10 +56,13 @@ def sortToList(excelDoc, threads: int = 1):
     returnList = []
     pool = ThreadPool(processes=threads)
     for doc in docs:
-        result = pool.apply_async(func=format, args=(doc, len(doc)))
+        result = pool.apply(func=format, args=(doc, len(doc)))
         results.append(result)
+
+ 
     for r in results:
-        returnList.append(r.get()[0])
+        returnList += r
+    print(len(returnList))
     return returnList
 
 
